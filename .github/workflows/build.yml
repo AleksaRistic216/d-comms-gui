@@ -1,0 +1,42 @@
+name: Build
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout d-comms-gui
+        uses: actions/checkout@v4
+        with:
+          path: d-comms-gui
+
+      - name: Checkout d-comms
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/d-comms
+          path: d-comms
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake build-essential \
+            libgl1-mesa-dev \
+            libwayland-dev \
+            libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
+
+      - name: Configure
+        run: cmake -B d-comms-gui/build -S d-comms-gui -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build d-comms-gui/build --target dui --parallel
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: dui-linux-x86_64
+          path: d-comms-gui/build/dui
