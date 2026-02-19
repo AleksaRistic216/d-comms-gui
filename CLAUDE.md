@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## General rules
+
+- Never include any AI, chatbot, or assistant attribution in commit messages, PR titles, PR descriptions, or any other git artifacts. No "Co-Authored-By: Claude", "Generated with Claude Code", or similar lines.
+
 ## Build
 
 Requires the sibling repo `../d-comms` to be present (CMake pulls it in via `add_subdirectory`). OpenGL and GLFW development libraries must be installed on the system.
