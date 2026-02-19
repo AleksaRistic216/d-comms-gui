@@ -147,8 +147,7 @@ void app_init(const char *basedir)
     g_sync_stop = false;
     g_sync_thread = std::thread([]() {
         while (!g_sync_stop) {
-            for (int i = 0; i < 50 && !g_sync_stop; i++)
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
             if (!g_sync_stop)
                 sync_with_peers();
         }
@@ -283,7 +282,7 @@ static void draw_chat_list(void)
                 proto_save_chat(&tmp, g_new_name, g_basedir);
                 dht_client_add_chat(tmp.user_key);
                 proto_chat_cleanup(&tmp);
-                snprintf(g_credentials, sizeof(g_credentials), "set %s %s", out_key, out_id);
+                snprintf(g_credentials, sizeof(g_credentials), "%s%s", out_key, out_id);
                 g_show_cred_modal = true;
             }
             ImGui::CloseCurrentPopup();
@@ -319,7 +318,7 @@ static void draw_chat_list(void)
         ImGui::Text("Chat name:");
         ImGui::SetNextItemWidth(300);
         ImGui::InputText("##joinname", g_join_name, sizeof(g_join_name));
-        ImGui::Text("Credentials (\"set <key> <id>\"):");
+        ImGui::Text("Token:");
         ImGui::SetNextItemWidth(300);
         ImGui::InputText("##joincmd", g_join_cmd, sizeof(g_join_cmd));
 
@@ -328,11 +327,13 @@ static void draw_chat_list(void)
         if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
 
         if (join && g_join_name[0] != '\0' && g_join_cmd[0] != '\0') {
-            char key[64], id[64];
-            const char *p = g_join_cmd;
-            if (strncmp(p, "set ", 4) == 0) p += 4;
-            while (*p == ' ') p++;
-            if (sscanf(p, "%63s %63s", key, id) == 2) {
+            if (strlen(g_join_cmd) == ID_BYTES * 4) {
+                char key[ID_BYTES * 2 + 1];
+                char id[ID_BYTES * 2 + 1];
+                memcpy(key, g_join_cmd, ID_BYTES * 2);
+                key[ID_BYTES * 2] = '\0';
+                memcpy(id, g_join_cmd + ID_BYTES * 2, ID_BYTES * 2);
+                id[ID_BYTES * 2] = '\0';
                 proto_chat tmp = {};
                 proto_join(&tmp, key, id);
                 proto_save_chat(&tmp, g_join_name, g_basedir);
