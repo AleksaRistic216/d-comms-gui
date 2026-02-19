@@ -17,6 +17,7 @@ extern "C" {
 #include "proto.h"
 #include "sync.h"
 #include "dht_client.h"
+#include "qrcodegen.h"
 }
 
 #define MAX_CHATS 64
@@ -231,6 +232,41 @@ static ImVec4 color_for(const char *eid)
     return k_colors[h % k_ncolors];
 }
 
+/* ---- QR code renderer (uses ImDrawList, no GL texture needed) ---- */
+
+static void draw_qr(const char *text)
+{
+    uint8_t qrcode[qrcodegen_BUFFER_LEN_MAX];
+    uint8_t temp[qrcodegen_BUFFER_LEN_MAX];
+    if (!qrcodegen_encodeText(text, temp, qrcode,
+                              qrcodegen_Ecc_MEDIUM,
+                              qrcodegen_VERSION_MIN, qrcodegen_VERSION_MAX,
+                              qrcodegen_Mask_AUTO, true))
+        return;
+
+    int sz     = qrcodegen_getSize(qrcode);
+    int scale  = 5;
+    int border = 4;
+    float img  = (float)((sz + 2 * border) * scale);
+
+    ImVec2 pos = ImGui::GetCursorScreenPos();
+    ImDrawList *dl = ImGui::GetWindowDrawList();
+    dl->AddRectFilled(pos, ImVec2(pos.x + img, pos.y + img),
+                      IM_COL32(255, 255, 255, 255));
+    for (int y = 0; y < sz; y++) {
+        for (int x = 0; x < sz; x++) {
+            if (qrcodegen_getModule(qrcode, x, y)) {
+                float x0 = pos.x + (float)((border + x) * scale);
+                float y0 = pos.y + (float)((border + y) * scale);
+                dl->AddRectFilled(ImVec2(x0, y0),
+                                  ImVec2(x0 + scale, y0 + scale),
+                                  IM_COL32(0, 0, 0, 255));
+            }
+        }
+    }
+    ImGui::Dummy(ImVec2(img, img));
+}
+
 /* ---- chat list screen ---- */
 
 static void draw_chat_list(void)
@@ -306,6 +342,8 @@ static void draw_chat_list(void)
             ImGui::SetClipboardText(g_credentials);
         ImGui::SameLine();
         if (ImGui::Button("OK")) ImGui::CloseCurrentPopup();
+        ImGui::Spacing();
+        draw_qr(g_credentials);
         ImGui::EndPopup();
     }
 

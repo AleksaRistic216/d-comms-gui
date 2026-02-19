@@ -68,3 +68,15 @@ endif()
 
 target_link_libraries(dui PRIVATE dcomms_core imgui_core Threads::Threads)
 target_include_directories(dui PRIVATE src)
+
+# --- QR code generation (nayuki, C port, no CMakeLists in repo) ---
+FetchContent_Declare(qrcodegen
+    GIT_REPOSITORY https://github.com/nayuki/QR-Code-generator.git
+    GIT_TAG master)
+FetchContent_GetProperties(qrcodegen)
+if(NOT qrcodegen_POPULATED)
+    cmake_policy(SET CMP0169 OLD)  # qrcodegen has no CMakeLists.txt
+    FetchContent_Populate(qrcodegen)
+endif()
+target_sources(dui PRIVATE ${qrcodegen_SOURCE_DIR}/c/qrcodegen.c)
+target_include_directories(dui PRIVATE ${qrcodegen_SOURCE_DIR}/c)
