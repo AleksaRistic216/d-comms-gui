@@ -26,11 +26,14 @@ jobs:
           sudo apt-get install -y \
             cmake build-essential \
             libgl1-mesa-dev \
-            libwayland-dev \
+            libwayland-dev libxkbcommon-dev \
             libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
 
       - name: Configure
-        run: cmake -B d-comms-gui/build -S d-comms-gui -DCMAKE_BUILD_TYPE=Release
+        run: |
+          cmake -B d-comms-gui/build -S d-comms-gui \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DDUI_VERSION="0.1.${{ github.run_number }}"
 
       - name: Build
         run: cmake --build d-comms-gui/build --target dui --parallel
@@ -45,10 +48,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete latest --yes --repo ${{ github.repository }} 2>/dev/null || true
-          gh release create latest \
+          VERSION="0.1.${{ github.run_number }}"
+          gh release create "v${VERSION}" \
             --repo ${{ github.repository }} \
-            --title "Latest ($(date -u '+%Y-%m-%d %H:%M UTC'))" \
+            --title "v${VERSION}" \
             --notes "Built from \`${{ github.sha }}\`" \
-            --prerelease \
             d-comms-gui/build/dui#dui-linux-x86_64

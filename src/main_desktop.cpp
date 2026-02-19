@@ -54,7 +54,7 @@ int main(void)
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
 #endif
 
-    GLFWwindow *win = glfwCreateWindow(900, 600, "DUI", nullptr, nullptr);
+    GLFWwindow *win = glfwCreateWindow(900, 600, "DUI v" DUI_VERSION, nullptr, nullptr);
     if (!win) {
         fprintf(stderr, "glfwCreateWindow failed\n");
         glfwTerminate();

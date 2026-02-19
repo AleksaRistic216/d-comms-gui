@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(DUI_PLATFORM "desktop" CACHE STRING
     "Target platform: desktop | macos | ios | android")
 
+set(DUI_VERSION "0.0.0" CACHE STRING "Application version string")
+
 find_package(Threads REQUIRED)
 
 # --- d-comms protocol library (sibling repo) ---
@@ -68,6 +70,7 @@ endif()
 
 target_link_libraries(dui PRIVATE dcomms_core imgui_core Threads::Threads)
 target_include_directories(dui PRIVATE src)
+target_compile_definitions(dui PRIVATE DUI_VERSION="${DUI_VERSION}")
 
 # --- QR code generation (nayuki, C port, no CMakeLists in repo) ---
 FetchContent_Declare(qrcodegen
