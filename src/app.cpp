@@ -70,8 +70,15 @@ static void clear_unread(const char *name) {
 
 /* sync thread */
 static std::atomic<bool> g_sync_stop{false};
-static std::atomic<bool> g_sync_delivered{false}; /* set when sync adds messages */
+static std::atomic<bool> g_sync_running{false};  /* true while sync_with_peers() executes */
+static std::atomic<int>  g_sync_gen{0};           /* incremented each time sync delivers msgs */
 static std::thread       g_sync_thread;
+
+/* new-message tracking – main thread only */
+static int g_sidebar_gen = -1; /* last gen the sidebar processed */
+static int g_chat_gen    = -1; /* gen when current chat was opened / last marked read */
+static int g_new_since   = -1; /* msg index at which "new" messages start (-1 = uninit) */
+static float g_new_flash_until = 0.f; /* time until status bar "New" flash expires */
 
 static void color_table_reset(void);
 
@@ -131,6 +138,8 @@ static void open_chat(const char *name)
         g_msg_input[0] = '\0';
         color_table_reset();
         clear_unread(name);
+        g_new_since = -1;                  /* set to current count on first render frame */
+        g_chat_gen  = g_sync_gen.load();   /* baseline: delivery after this triggers "new" */
     }
 }
 
@@ -218,9 +227,11 @@ void app_init(const char *basedir)
         while (!g_sync_stop) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             if (!g_sync_stop) {
+                g_sync_running = true;
                 int added = sync_with_peers();
+                g_sync_running = false;
                 if (added > 0)
-                    g_sync_delivered = true;
+                    g_sync_gen++;
             }
         }
     });
@@ -431,6 +442,36 @@ static void draw_modals(void)
     }
 }
 
+/* ---- "new messages" separator ---- */
+
+static void draw_new_separator(void)
+{
+    const char *label    = "new messages";
+    ImVec2      tsz      = ImGui::CalcTextSize(label);
+    float       avail    = ImGui::GetContentRegionAvail().x;
+    float       pad_y    = 10.f;
+    float       cy       = ImGui::GetCursorPosY() + pad_y;
+    ImVec2      win_pos  = ImGui::GetWindowPos();
+    float       scroll_y = ImGui::GetScrollY();
+    ImDrawList *dl       = ImGui::GetWindowDrawList();
+
+    float mid_x  = win_pos.x + avail * 0.5f;
+    float line_y = win_pos.y + cy + tsz.y * 0.5f - scroll_y;
+    float tx     = mid_x - tsz.x * 0.5f;
+    float gap    = 8.f;
+
+    ImU32 col_line = IM_COL32(50, 140, 200, 140);
+    ImU32 col_text = IM_COL32(80, 170, 220, 200);
+
+    dl->AddLine(ImVec2(win_pos.x + 16.f, line_y),
+                ImVec2(tx - gap, line_y), col_line, 1.f);
+    dl->AddLine(ImVec2(tx + tsz.x + gap, line_y),
+                ImVec2(win_pos.x + avail - 16.f, line_y), col_line, 1.f);
+    dl->AddText(ImVec2(tx, win_pos.y + cy - scroll_y), col_text, label);
+
+    ImGui::Dummy(ImVec2(0.f, tsz.y + pad_y * 2.f));
+}
+
 /* ---- message bubble ---- */
 
 static void draw_bubble(ImDrawList *dl, const char *text, bool is_own, ImVec4 sender_color)
@@ -527,7 +568,9 @@ static void draw_sidebar(float width, float height)
     int count = scan_chats(names);
 
     /* mark unread for non-active chats when sync delivered */
-    if (g_sync_delivered.exchange(false)) {
+    int cur_gen = g_sync_gen.load();
+    if (cur_gen > g_sidebar_gen) {
+        g_sidebar_gen = cur_gen;
         for (int i = 0; i < count; i++) {
             if (strcmp(names[i], g_active_chat) != 0)
                 set_unread(names[i]);
@@ -648,10 +691,28 @@ static void draw_chat_panel(float height)
     ImGui::BeginChild("##msgs", ImVec2(0, -input_h), false);
 
     const proto_messages *msgs = proto_list(&g_chat);
-    if (msgs && msgs->count > 0) {
+    int msg_count = msgs ? msgs->count : 0;
+
+    /* initialise on first frame after opening */
+    if (g_new_since < 0)
+        g_new_since = msg_count;
+
+    /* new sync delivery while this chat is open */
+    int cur_gen = g_sync_gen.load();
+    if (cur_gen > g_chat_gen) {
+        g_chat_gen = cur_gen;
+        if (msg_count > g_new_since) {
+            g_scroll_to_bottom  = true;
+            g_new_flash_until   = (float)ImGui::GetTime() + 4.f;
+        }
+    }
+
+    if (msgs && msg_count > 0) {
         color_table_reset();
         ImDrawList *dl = ImGui::GetWindowDrawList();
-        for (int i = 0; i < msgs->count; i++) {
+        for (int i = 0; i < msg_count; i++) {
+            if (i == g_new_since && g_new_since < msg_count)
+                draw_new_separator();
             bool is_own = (strcmp(msgs->entity_ids[i], g_chat.entity_id) == 0);
             ImVec4 col = color_for(msgs->entity_ids[i]);
             draw_bubble(dl, msgs->texts[i], is_own, col);
@@ -662,6 +723,10 @@ static void draw_chat_panel(float height)
         ImGui::SetScrollHereY(1.0f);
         g_scroll_to_bottom = false;
     }
+
+    /* mark all as read once the user is at the bottom */
+    if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 10.f)
+        g_new_since = msg_count;
 
     ImGui::EndChild();
     ImGui::PopStyleVar();
@@ -724,12 +789,27 @@ void app_frame(void)
     ImGui::SetCursorPosY(content_h);
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.07f, 0.07f, 0.09f, 1.f));
     ImGui::BeginChild("##statusbar", ImVec2(0, 0), false);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.f, 4.f));
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 4.f);
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.38f, 0.38f, 0.48f, 1.f));
-    ImGui::Text("Live  |  v" DUI_VERSION);
-    ImGui::PopStyleColor();
-    ImGui::PopStyleVar();
+    ImGui::SetCursorPosX(10.f);
+
+    if (g_sync_running) {
+        static const char *sp[] = {"|", "/", "-", "\\"};
+        int f = (int)(ImGui::GetTime() * 8.0) % 4;
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.40f, 0.65f, 0.85f, 1.f));
+        ImGui::Text("%s Syncing  |  v" DUI_VERSION, sp[f]);
+        ImGui::PopStyleColor();
+    } else if (ImGui::GetTime() < g_new_flash_until) {
+        /* brief "new" flash after delivery */
+        float t = (float)(g_new_flash_until - ImGui::GetTime()) / 4.f; /* 0..1 */
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.25f, 0.80f, 0.55f, t * 0.9f + 0.1f));
+        ImGui::TextUnformatted("* New messages  |  v" DUI_VERSION);
+        ImGui::PopStyleColor();
+    } else {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.30f, 0.30f, 0.38f, 1.f));
+        ImGui::TextUnformatted("Live  |  v" DUI_VERSION);
+        ImGui::PopStyleColor();
+    }
+
     ImGui::EndChild();
     ImGui::PopStyleColor();
 
