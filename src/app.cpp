@@ -792,13 +792,7 @@ void app_frame(void)
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 4.f);
     ImGui::SetCursorPosX(10.f);
 
-    if (g_sync_running) {
-        static const char *sp[] = {"|", "/", "-", "\\"};
-        int f = (int)(ImGui::GetTime() * 8.0) % 4;
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.40f, 0.65f, 0.85f, 1.f));
-        ImGui::Text("%s Syncing  |  v" DUI_VERSION, sp[f]);
-        ImGui::PopStyleColor();
-    } else if (ImGui::GetTime() < g_new_flash_until) {
+    if (ImGui::GetTime() < g_new_flash_until) {
         /* brief "new" flash after delivery */
         float t = (float)(g_new_flash_until - ImGui::GetTime()) / 4.f; /* 0..1 */
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.25f, 0.80f, 0.55f, t * 0.9f + 0.1f));
