@@ -69,6 +69,7 @@ int main(void)
     io.IniFilename = nullptr; /* disable imgui.ini */
 
     ImGui::StyleColorsDark();
+    io.FontGlobalScale = 1.1f;
 
     ImGui_ImplGlfw_InitForOpenGL(win, true);
     ImGui_ImplOpenGL3_Init("#version 330");
