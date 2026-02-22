@@ -536,7 +536,19 @@ el.messageInput.addEventListener('input', autoResizeTextarea);
 
 // ── Push events from main process ─────────────────────────────────────────────
 
+// Show "Starting up…" only if the main process takes longer than 300 ms to
+// respond. Fast startups skip this screen entirely.
+const startupTimer = setTimeout(() => {
+    if (!state.appReady) {
+        el.emptyState.style.display   = 'flex';
+        el.emptyTitle.textContent     = 'Starting up…';
+        el.emptySubtitle.textContent  = 'Initialising the d-comms library';
+        el.globalSpinner.style.display = 'block';
+    }
+}, 300);
+
 window.dcomms.onReady(data => {
+    clearTimeout(startupTimer);
     state.appReady = true;
     state.syncPort = data.syncPort;
     updatePeerBadge(data.peerCount || 0);

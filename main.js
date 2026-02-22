@@ -326,17 +326,20 @@ app.whenReady().then(() => {
 
     mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
-    // Initialise addon after window is created so error messages can be pushed
-    initAddon().catch(err => console.error('initAddon error:', err));
+    // Wait for the renderer to finish loading before initialising the addon,
+    // so the app:ready push event is never sent before the listener is registered.
+    mainWindow.webContents.once('did-finish-load', () => {
+        initAddon().catch(err => console.error('initAddon error:', err));
+    });
 });
 
 app.on('before-quit', () => {
     clearInterval(syncInterval);
     clearInterval(pollInterval);
-    if (addon) {
-        try { addon.unregister(); } catch (_) {}
-        try { addon.stopDHT();    } catch (_) {}
-    }
+    // Force-exit to avoid blocking on native thread joins (DHT thread has up to
+    // 1s select timeout) and UPnP DeletePortMapping network calls in unregister().
+    // Data integrity is preserved: messages.db uses flock for atomic appends.
+    app.exit(0);
 });
 
 app.on('window-all-closed', () => {
