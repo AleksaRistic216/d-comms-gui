@@ -1,85 +1,54 @@
 cmake_minimum_required(VERSION 3.20)
-project(dui C CXX)
-set(CMAKE_C_STANDARD 99)
+project(dcomms_addon CXX C)
+
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_C_STANDARD 99)
 
-set(DUI_PLATFORM "desktop" CACHE STRING
-    "Target platform: desktop | macos | ios | android")
+# All code that ends up in the shared .node file must be position-independent
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-set(DUI_VERSION "0.0.0" CACHE STRING "Application version string")
+# cmake-js sets CMAKE_JS_INC (Node.js headers) and CMAKE_JS_LIB (node library)
+include_directories(${CMAKE_JS_INC})
 
-find_package(Threads REQUIRED)
+# Find node-addon-api include path
+execute_process(
+    COMMAND node -p "require('node-addon-api').include"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE NODE_ADDON_API_DIR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+string(REGEX REPLACE "\"" "" NODE_ADDON_API_DIR "${NODE_ADDON_API_DIR}")
 
-# --- d-comms protocol library (sibling repo) ---
-add_subdirectory(../d-comms ${CMAKE_CURRENT_BINARY_DIR}/d-comms)
-
-# --- Dear ImGui (common sources, no backend yet) ---
+# Download d-comms via FetchContent
 include(FetchContent)
-FetchContent_Declare(imgui
-    GIT_REPOSITORY https://github.com/ocornut/imgui.git
-    GIT_TAG v1.91.6)
-FetchContent_MakeAvailable(imgui)
-
-add_library(imgui_core STATIC
-    ${imgui_SOURCE_DIR}/imgui.cpp
-    ${imgui_SOURCE_DIR}/imgui_draw.cpp
-    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
-    ${imgui_SOURCE_DIR}/imgui_tables.cpp)
-target_include_directories(imgui_core PUBLIC
-    ${imgui_SOURCE_DIR}
-    ${imgui_SOURCE_DIR}/backends)
-
-# --- Platform-specific target ---
-if(DUI_PLATFORM STREQUAL "desktop")
-    FetchContent_Declare(glfw
-        GIT_REPOSITORY https://github.com/glfw/glfw.git
-        GIT_TAG 3.4)
-    set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-    set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(glfw)
-    find_package(OpenGL REQUIRED)
-
-    target_sources(imgui_core PRIVATE
-        ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
-        ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp)
-    target_link_libraries(imgui_core PUBLIC glfw OpenGL::GL)
-
-    add_executable(dui
-        src/app.cpp
-        src/main_desktop.cpp)
-
-elseif(DUI_PLATFORM STREQUAL "macos")
-    # TODO: Metal backend
-    add_executable(dui MACOSX_BUNDLE
-        src/app.cpp src/main_macos.mm)
-
-elseif(DUI_PLATFORM STREQUAL "ios")
-    # TODO: UIKit + Metal
-    add_executable(dui MACOSX_BUNDLE
-        src/app.cpp src/main_ios.mm)
-    set_target_properties(dui PROPERTIES
-        MACOSX_BUNDLE_GUI_IDENTIFIER "com.dui.app"
-        XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "14.0")
-
-elseif(DUI_PLATFORM STREQUAL "android")
-    # TODO: ANativeActivity + OpenGL ES 3.0
-    add_library(dui SHARED
-        src/app.cpp src/main_android.cpp)
+FetchContent_Declare(d_comms
+    GIT_REPOSITORY https://github.com/AleksaRistic216/d-comms.git
+    GIT_TAG        master
+)
+FetchContent_GetProperties(d_comms)
+if(NOT d_comms_POPULATED)
+    FetchContent_Populate(d_comms)
+    # EXCLUDE_FROM_ALL: only build dcomms_core when explicitly needed (avoids building test executables)
+    add_subdirectory(${d_comms_SOURCE_DIR} ${d_comms_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 
-target_link_libraries(dui PRIVATE dcomms_core imgui_core Threads::Threads)
-target_include_directories(dui PRIVATE src)
-target_compile_definitions(dui PRIVATE DUI_VERSION="${DUI_VERSION}")
+# Build the N-API native addon
+add_library(dcomms_addon SHARED src/addon.cpp)
 
-# --- QR code generation (nayuki, C port, no CMakeLists in repo) ---
-FetchContent_Declare(qrcodegen
-    GIT_REPOSITORY https://github.com/nayuki/QR-Code-generator.git
-    GIT_TAG master)
-FetchContent_GetProperties(qrcodegen)
-if(NOT qrcodegen_POPULATED)
-    cmake_policy(SET CMP0169 OLD)  # qrcodegen has no CMakeLists.txt
-    FetchContent_Populate(qrcodegen)
-endif()
-target_sources(dui PRIVATE ${qrcodegen_SOURCE_DIR}/c/qrcodegen.c)
-target_include_directories(dui PRIVATE ${qrcodegen_SOURCE_DIR}/c)
+set_target_properties(dcomms_addon PROPERTIES
+    PREFIX ""
+    SUFFIX ".node"
+)
+
+target_include_directories(dcomms_addon PRIVATE
+    ${CMAKE_JS_INC}
+    ${NODE_ADDON_API_DIR}
+    ${d_comms_SOURCE_DIR}/src
+)
+
+target_compile_definitions(dcomms_addon PRIVATE NAPI_VERSION=8)
+
+target_link_libraries(dcomms_addon PRIVATE
+    ${CMAKE_JS_LIB}
+    dcomms_core
+)

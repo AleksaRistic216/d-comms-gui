@@ -1,0 +1,25 @@
+{
+  "name": "d-comms-gui",
+  "version": "1.0.0",
+  "description": "Discord-like encrypted P2P messaging app using d-comms protocol",
+  "main": "main.js",
+  "scripts": {
+    "build": "cmake-js build",
+    "build:debug": "cmake-js build --debug",
+    "rebuild": "cmake-js rebuild",
+    "start": "electron .",
+    "dev": "cmake-js build --debug && electron . --dev",
+    "postinstall": "cmake-js build"
+  },
+  "dependencies": {
+    "bindings": "^1.5.0",
+    "node-addon-api": "^8.3.0"
+  },
+  "devDependencies": {
+    "cmake-js": "^7.3.0",
+    "electron": "^33.2.0"
+  },
+  "cmake-js": {
+    "directory": "."
+  }
+}

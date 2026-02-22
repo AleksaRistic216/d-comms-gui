@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self'; style-src 'self' 'unsafe-inline';" />
+    <title>D-Comms</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════ SIDEBAR ══ -->
+<aside class="sidebar">
+    <div class="sidebar-header">
+        <div class="app-logo">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+        </div>
+        <span class="app-name">D-Comms</span>
+        <span class="peer-badge" id="peerBadge" title="Live peers">0 peers</span>
+        <div class="sync-indicator" id="syncIndicator" title="Sync status"></div>
+    </div>
+
+    <div class="sidebar-section-label">CHATS</div>
+
+    <nav class="chat-list" id="chatList">
+        <!-- populated by renderer.js -->
+    </nav>
+
+    <div class="sidebar-footer">
+        <button class="btn-add-chat" id="btnAddChat" title="Add chat">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add Chat
+        </button>
+        <button class="btn-icon sidebar-footer-icon" id="btnOpenDataDir" title="Open data folder">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 3h7l2 3h9a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
+            </svg>
+        </button>
+    </div>
+</aside>
+
+<!-- ══════════════════════════════════════════════════ MAIN CONTENT ══ -->
+<main class="main-content">
+
+    <!-- Empty / loading state -->
+    <div class="empty-state" id="emptyState">
+        <div class="empty-icon">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+        </div>
+        <h2 id="emptyTitle">Starting up…</h2>
+        <p  id="emptySubtitle">Initialising the d-comms library</p>
+        <div class="spinner" id="globalSpinner"></div>
+    </div>
+
+    <!-- Active chat view -->
+    <div class="chat-view" id="chatView" style="display:none">
+        <!-- Header -->
+        <header class="chat-header">
+            <div class="chat-header-left">
+                <span class="chat-hash">#</span>
+                <span class="chat-title" id="chatTitle">chat-name</span>
+            </div>
+            <div class="chat-header-right">
+                <button class="btn-icon" id="btnSyncNow" title="Sync now">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 4 23 10 17 10"/>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                    </svg>
+                </button>
+                <button class="btn-icon" id="btnChatInfo" title="Chat info">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                </button>
+                <button class="btn-icon btn-danger" id="btnDeleteChat" title="Delete chat">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Loading overlay for chat -->
+        <div class="chat-loading" id="chatLoading" style="display:none">
+            <div class="spinner"></div>
+            <p>Deriving encryption keys…<br><small>This takes about 5 seconds</small></p>
+        </div>
+
+        <!-- Messages -->
+        <div class="messages-area" id="messagesArea"></div>
+
+        <!-- Turn status bar -->
+        <div class="turn-bar" id="turnBar" style="display:none">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <span id="turnBarText">Waiting for peer to respond…</span>
+        </div>
+
+        <!-- Input area -->
+        <div class="input-area">
+            <div class="input-wrapper">
+                <textarea
+                    class="message-input"
+                    id="messageInput"
+                    placeholder="Message…"
+                    rows="1"
+                ></textarea>
+                <button class="btn-send" id="btnSend" title="Send (Enter)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="22" y1="2" x2="11" y2="13"/>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- ══════════════════════════════════════════════════════════ MODALS ══ -->
+
+<!-- Add Chat Modal -->
+<div class="modal-backdrop" id="modalAddChat" style="display:none">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 id="modalAddTitle">Add Chat</h2>
+            <button class="btn-icon modal-close" data-close="modalAddChat">✕</button>
+        </div>
+
+        <!-- Step 1: choose action -->
+        <div id="stepChoose">
+            <div class="radio-group">
+                <label class="radio-label">
+                    <input type="radio" name="chatAction" value="create" checked />
+                    <span>Create a new chat</span>
+                </label>
+                <label class="radio-label">
+                    <input type="radio" name="chatAction" value="join" />
+                    <span>Join an existing chat</span>
+                </label>
+            </div>
+
+            <!-- Create fields -->
+            <div id="createFields">
+                <label class="field-label">Chat name</label>
+                <input class="field-input" id="inputChatName" placeholder="e.g. alice-bob" maxlength="64" />
+            </div>
+
+            <!-- Join fields -->
+            <div id="joinFields" style="display:none">
+                <label class="field-label">Chat name</label>
+                <input class="field-input" id="inputManualName" placeholder="any name for this chat" maxlength="64" />
+                <label class="field-label">Invite code</label>
+                <input class="field-input mono" id="inputInviteCode" placeholder="64-char code from peer" maxlength="64" />
+            </div>
+
+            <p class="field-hint" id="addHint"></p>
+            <div class="modal-footer" id="chooseFooter">
+                <button class="btn btn-ghost" data-close="modalAddChat">Cancel</button>
+                <button class="btn btn-primary" id="btnAddSubmit">Create</button>
+            </div>
+        </div>
+
+        <!-- Step 2: loading -->
+        <div id="stepLoading" style="display:none">
+            <div class="modal-spinner-wrap">
+                <div class="spinner"></div>
+                <p>Deriving encryption keys…<br><small>This may take ~5 seconds</small></p>
+            </div>
+        </div>
+
+        <!-- Step 3: show invite code (after create) -->
+        <div id="stepCredentials" style="display:none">
+            <p class="cred-intro">Share this invite code with your peer to let them join.</p>
+            <label class="field-label">Invite code</label>
+            <div class="cred-row">
+                <code class="cred-value" id="credInviteCode"></code>
+                <button class="btn btn-ghost btn-sm" id="btnCopyInviteCode">Copy</button>
+            </div>
+            <p class="cred-warning">Keep it private — anyone with this code can read your messages.</p>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="btnCredDone">Done</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chat Info Modal -->
+<div class="modal-backdrop" id="modalChatInfo" style="display:none">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>Chat Info</h2>
+            <button class="btn-icon modal-close" data-close="modalChatInfo">✕</button>
+        </div>
+        <label class="field-label">Name</label>
+        <p class="info-value" id="infoChatName"></p>
+        <label class="field-label">Role</label>
+        <p class="info-value" id="infoChatRole"></p>
+        <label class="field-label">User Key</label>
+        <div class="cred-row">
+            <code class="cred-value" id="infoUserKey"></code>
+            <button class="btn btn-ghost btn-sm" id="btnInfoCopyUserKey">Copy</button>
+        </div>
+        <label class="field-label">Secret ID</label>
+        <div class="cred-row">
+            <code class="cred-value" id="infoSecretId"></code>
+            <button class="btn btn-ghost btn-sm" id="btnInfoCopySecretId">Copy</button>
+        </div>
+        <label class="field-label">Sync port</label>
+        <p class="info-value" id="infoSyncPort"></p>
+        <div class="modal-footer">
+            <button class="btn btn-primary" data-close="modalChatInfo">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Peer Modal -->
+<div class="modal-backdrop" id="modalAddPeer" style="display:none">
+    <div class="modal modal-sm">
+        <div class="modal-header">
+            <h2>Add Peer</h2>
+            <button class="btn-icon modal-close" data-close="modalAddPeer">✕</button>
+        </div>
+        <label class="field-label">Host</label>
+        <input class="field-input" id="inputPeerHost" placeholder="192.168.1.x or hostname" />
+        <label class="field-label">Port</label>
+        <input class="field-input" id="inputPeerPort" type="number" placeholder="port number" />
+        <div class="modal-footer">
+            <button class="btn btn-ghost" data-close="modalAddPeer">Cancel</button>
+            <button class="btn btn-primary" id="btnAddPeer">Add</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete confirm modal -->
+<div class="modal-backdrop" id="modalDeleteConfirm" style="display:none">
+    <div class="modal modal-sm">
+        <div class="modal-header">
+            <h2>Delete Chat</h2>
+            <button class="btn-icon modal-close" data-close="modalDeleteConfirm">✕</button>
+        </div>
+        <p>Delete <strong id="deleteConfirmName"></strong>? This removes it from this device only — the peer still has their copy.</p>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" data-close="modalDeleteConfirm">Cancel</button>
+            <button class="btn btn-danger" id="btnConfirmDelete">Delete</button>
+        </div>
+    </div>
+</div>
+
+<script src="renderer.js"></script>
+</body>
+</html>
