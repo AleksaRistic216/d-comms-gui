@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            eb_args: --linux --arch x64
+          - os: macos-13
+            eb_args: --mac --arch x64
+          - os: macos-latest
+            eb_args: --mac --arch arm64
+          - os: windows-latest
+            eb_args: --win --arch x64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install CMake + Ninja (macOS)
+        if: runner.os == 'macOS'
+        run: brew install cmake ninja
+
+      - name: Set version from tag
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          node -e "
+            const fs = require('fs');
+            const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            p.version = '${VERSION}';
+            fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');
+          "
+
+      # Windows: build the native addon with MSYS2 MinGW + Ninja so the
+      # resulting .node has no Visual C++ or MinGW runtime DLL dependencies
+      # (libgcc, libstdc++, libwinpthread are linked statically via CMakeLists).
+      - name: Add MinGW to PATH (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: echo "C:/msys64/mingw64/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        shell: bash
+        run: npm install
+        env:
+          CMAKE_GENERATOR: ${{ runner.os == 'Windows' && 'Ninja' || '' }}
+          CC:  ${{ runner.os == 'Windows' && 'gcc'   || '' }}
+          CXX: ${{ runner.os == 'Windows' && 'g++'   || '' }}
+
+      - name: Package and publish
+        shell: bash
+        run: npx electron-builder ${{ matrix.eb_args }} --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Skip macOS code-signing (no Apple Developer certificate in CI).
+          # Users opening the dmg for the first time must right-click → Open.
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'

@@ -9,6 +9,7 @@
     "rebuild": "cmake-js rebuild",
     "start": "electron .",
     "dev": "cmake-js build --debug && electron . --dev",
+    "dist": "electron-builder",
     "postinstall": "cmake-js build"
   },
   "dependencies": {
@@ -17,9 +18,45 @@
   },
   "devDependencies": {
     "cmake-js": "^7.3.0",
-    "electron": "^33.2.0"
+    "electron": "^33.2.0",
+    "electron-builder": "^26.8.1"
   },
   "cmake-js": {
     "directory": "."
+  },
+  "build": {
+    "appId": "com.d-comms.app",
+    "productName": "D-Comms",
+    "directories": {
+      "buildResources": "build-resources",
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!src/**",
+      "!build/**",
+      "!CMakeLists.txt",
+      "!.github/**",
+      "build/Release/*.node"
+    ],
+    "asarUnpack": [
+      "build/Release/*.node"
+    ],
+    "npmRebuild": false,
+    "linux": {
+      "target": [{ "target": "AppImage", "arch": ["x64"] }],
+      "category": "Network"
+    },
+    "mac": {
+      "target": [{ "target": "dmg" }],
+      "category": "public.app-category.social-networking"
+    },
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    }
   }
 }

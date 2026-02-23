@@ -49,3 +49,15 @@ target_link_libraries(dcomms_addon PRIVATE
     ${CMAKE_JS_LIB}
     dcomms_core
 )
+
+# On MinGW, statically link the GCC, C++, and winpthread runtimes into the
+# .node shared library so the packaged app has no external DLL dependencies
+# (libgcc_s_seh-1.dll, libstdc++-6.dll, libwinpthread-1.dll are not present
+# on a stock Windows installation).
+if(MINGW)
+    target_link_options(dcomms_addon PRIVATE
+        -static-libgcc
+        -static-libstdc++
+        -Wl,-Bstatic,-lwinpthread,-Bdynamic
+    )
+endif()
