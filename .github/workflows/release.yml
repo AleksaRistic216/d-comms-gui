@@ -15,13 +15,13 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            eb_args: --linux --arch x64
+            eb_args: --linux --x64
           - os: macos-13
-            eb_args: --mac --arch x64
+            eb_args: --mac --x64
           - os: macos-latest
-            eb_args: --mac --arch arm64
+            eb_args: --mac --arm64
           - os: windows-latest
-            eb_args: --win --arch x64
+            eb_args: --win --x64
 
     runs-on: ${{ matrix.os }}
 
