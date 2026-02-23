@@ -262,10 +262,29 @@ function buildPeerTooltip() {
 
 el.peerBadge.addEventListener('mouseenter', () => {
     buildPeerTooltip();
+    const rect = el.peerBadge.getBoundingClientRect();
+    el.peerTooltip.style.top  = (rect.bottom + 6) + 'px';
+    el.peerTooltip.style.left = Math.min(rect.left, window.innerWidth - 230) + 'px';
     el.peerTooltip.classList.add('visible');
 });
 el.peerBadge.addEventListener('mouseleave', () => {
     el.peerTooltip.classList.remove('visible');
+});
+
+// Click the peer badge to open the Add Peer modal
+el.peerBadge.addEventListener('click', () => {
+    el.peerTooltip.classList.remove('visible');
+    el.inputPeerHost.value = '';
+    el.inputPeerPort.value = '';
+    showModal('modalAddPeer');
+});
+
+el.btnAddPeer.addEventListener('click', async () => {
+    const host = el.inputPeerHost.value.trim();
+    const port = parseInt(el.inputPeerPort.value.trim(), 10);
+    if (!host || isNaN(port) || port < 1 || port > 65535) return;
+    await window.dcomms.addPeer(host, port);
+    closeModal('modalAddPeer');
 });
 
 function showChatView() {
