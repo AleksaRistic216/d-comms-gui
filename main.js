@@ -203,7 +203,7 @@ ipcMain.handle('chat:open', async (_, { name }) => {
         };
         loadedChats.set(name, info);
         messageCounts.set(result.chatId, 0);
-        addon.addDHTChat(result.userKey);
+        addon.addDHTChat(result.secretId);
         return { success: true, name, ...info };
     } catch (err) {
         return { success: false, error: err.message };
@@ -225,7 +225,7 @@ ipcMain.handle('chat:create', async (_, { name }) => {
         savedChatNames.add(name);
         messageCounts.set(result.chatId, 0);
         addon.saveChat(result.chatId, name, userData());
-        addon.addDHTChat(result.userKey);
+        addon.addDHTChat(result.secretId);
 
         return { success: true, name, ...info };
     } catch (err) {
@@ -248,7 +248,7 @@ ipcMain.handle('chat:join', async (_, { name, userKey, secretId }) => {
         savedChatNames.add(name);
         messageCounts.set(result.chatId, 0);
         addon.saveChat(result.chatId, name, userData());
-        addon.addDHTChat(result.userKey);
+        addon.addDHTChat(result.secretId);
         return { success: true, name, ...info };
     } catch (err) {
         return { success: false, error: err.message };
