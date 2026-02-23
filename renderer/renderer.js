@@ -256,16 +256,22 @@ function buildPeerTooltip() {
         </div>`).join('');
 }
 
-el.peerBadge.addEventListener('mouseenter', () => {
+let _tooltipHideTimer;
+const _showTooltip = () => {
+    clearTimeout(_tooltipHideTimer);
     buildPeerTooltip();
     const rect = el.peerBadge.getBoundingClientRect();
-    el.peerTooltip.style.top  = (rect.bottom + 6) + 'px';
+    el.peerTooltip.style.top  = (rect.bottom + 4) + 'px';
     el.peerTooltip.style.left = Math.min(rect.left, window.innerWidth - 230) + 'px';
     el.peerTooltip.classList.add('visible');
-});
-el.peerBadge.addEventListener('mouseleave', () => {
-    el.peerTooltip.classList.remove('visible');
-});
+};
+const _hideTooltip = () => {
+    _tooltipHideTimer = setTimeout(() => el.peerTooltip.classList.remove('visible'), 150);
+};
+el.peerBadge.addEventListener('mouseenter', _showTooltip);
+el.peerBadge.addEventListener('mouseleave', _hideTooltip);
+el.peerTooltip.addEventListener('mouseenter', () => clearTimeout(_tooltipHideTimer));
+el.peerTooltip.addEventListener('mouseleave', _hideTooltip);
 
 
 function showChatView() {
