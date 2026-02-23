@@ -29,6 +29,12 @@ FetchContent_Declare(d_comms
 )
 FetchContent_MakeAvailable(d_comms)
 
+# cmake-js passes -DCMAKE_SHARED_LINKER_FLAGS=/DELAYLOAD:NODE.EXE which is an
+# MSVC-only flag. MinGW's ld.exe treats it as a filename and fails. Clear it.
+if(MINGW)
+    set(CMAKE_SHARED_LINKER_FLAGS "" CACHE STRING "" FORCE)
+endif()
+
 # Build the N-API native addon
 add_library(dcomms_addon SHARED src/addon.cpp)
 
