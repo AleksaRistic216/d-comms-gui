@@ -16,8 +16,6 @@ jobs:
         include:
           - os: ubuntu-latest
             eb_args: --linux --x64
-          - os: macos-13
-            eb_args: --mac --x64
           - os: macos-latest
             eb_args: --mac --arm64
           - os: windows-latest
