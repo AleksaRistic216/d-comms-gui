@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.28)
 project(dcomms_addon CXX C)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -19,18 +19,15 @@ execute_process(
 )
 string(REGEX REPLACE "\"" "" NODE_ADDON_API_DIR "${NODE_ADDON_API_DIR}")
 
-# Download d-comms via FetchContent
+# Download d-comms via FetchContent; EXCLUDE_FROM_ALL avoids building the
+# library's test executables as part of our addon build.
 include(FetchContent)
 FetchContent_Declare(d_comms
     GIT_REPOSITORY https://github.com/AleksaRistic216/d-comms.git
     GIT_TAG        master
+    EXCLUDE_FROM_ALL
 )
-FetchContent_GetProperties(d_comms)
-if(NOT d_comms_POPULATED)
-    FetchContent_Populate(d_comms)
-    # EXCLUDE_FROM_ALL: only build dcomms_core when explicitly needed (avoids building test executables)
-    add_subdirectory(${d_comms_SOURCE_DIR} ${d_comms_BINARY_DIR} EXCLUDE_FROM_ALL)
-endif()
+FetchContent_MakeAvailable(d_comms)
 
 # Build the N-API native addon
 add_library(dcomms_addon SHARED src/addon.cpp)
