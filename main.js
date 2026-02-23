@@ -310,7 +310,7 @@ ipcMain.handle('app:open-data-dir', () => shell.openPath(userData()));
 
 // ── Window & lifecycle ───────────────────────────────────────────────────────
 
-app.whenReady().then(() => {
+function createWindow() {
     mainWindow = new BrowserWindow({
         width:           1100,
         height:          720,
@@ -326,20 +326,41 @@ app.whenReady().then(() => {
 
     mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
+    mainWindow.on('closed', () => { mainWindow = null; });
+
     // Wait for the renderer to finish loading before initialising the addon,
     // so the app:ready push event is never sent before the listener is registered.
+    // If the window is reopened after a close, the addon is already running —
+    // just push the current state instead of re-initialising.
     mainWindow.webContents.once('did-finish-load', () => {
-        initAddon().catch(err => console.error('initAddon error:', err));
+        if (!addon) {
+            initAddon().catch(err => console.error('initAddon error:', err));
+        } else {
+            pushToRenderer('app:ready', {
+                syncPort,
+                savedChats: [...savedChatNames],
+            });
+        }
+    });
+}
+
+app.whenReady().then(() => {
+    createWindow();
+
+    // macOS: recreate the window when the dock icon is clicked and no windows
+    // are open (standard macOS app behaviour).
+    app.on('activate', () => {
+        if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
 });
 
 app.on('before-quit', () => {
     clearInterval(syncInterval);
     clearInterval(pollInterval);
-    // Force-exit to avoid blocking on native thread joins (DHT thread has up to
-    // 1s select timeout) and UPnP DeletePortMapping network calls in unregister().
-    // Data integrity is preserved: messages.db uses flock for atomic appends.
-    app.exit(0);
+    // Schedule a hard exit as a fallback in case native threads (DHT select
+    // loop, UPnP cleanup) stall the normal Electron shutdown on macOS.
+    // .unref() ensures this timer doesn't prevent a clean exit if it isn't needed.
+    setTimeout(() => process.exit(0), 2000).unref();
 });
 
 app.on('window-all-closed', () => {
