@@ -58,6 +58,9 @@
     "win": {
       "target": [{ "target": "nsis", "arch": ["x64"] }]
     },
+    "deb": {
+      "maintainer": "AleksaRistic216 <AleksaRistic216@users.noreply.github.com>"
+    },
     "nsis": {
       "oneClick": true,
       "perMachine": false
