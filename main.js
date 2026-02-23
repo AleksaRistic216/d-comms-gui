@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Menu } = require('electron');
 const path = require('path');
 const fs   = require('fs');
 const net  = require('net');
@@ -353,6 +353,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+    Menu.setApplicationMenu(null);
     createWindow();
 
     // macOS: recreate the window when the dock icon is clicked and no windows
