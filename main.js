@@ -22,6 +22,9 @@ let syncInterval    = null;
 let pollInterval    = null;
 let syncInProgress  = false;
 
+// "host:port" → timestamp (ms) of last successful TCP probe
+const peerLastSeen = new Map();
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function userData() {
@@ -78,9 +81,9 @@ function probePeer(host, port) {
     });
 }
 
-async function getLivePeerCount() {
+async function getLivePeers() {
     const regPath = path.join(userData(), 'registry.db');
-    if (!fs.existsSync(regPath)) return 0;
+    if (!fs.existsSync(regPath)) return { count: 0, peers: [] };
     try {
         // Collect unique entries that are not our own sync port
         const seen  = new Set();
@@ -95,9 +98,14 @@ async function getLivePeerCount() {
             const port = parseInt(l.slice(i + 1), 10);
             if (!isNaN(port) && port !== syncPort) peers.push({ host, port });
         }
-        const results = await Promise.all(peers.map(p => probePeer(p.host, p.port)));
-        return results.filter(Boolean).length;
-    } catch (_) { return 0; }
+        const results = await Promise.all(peers.map(async p => {
+            const key  = `${p.host}:${p.port}`;
+            const live = await probePeer(p.host, p.port);
+            if (live) peerLastSeen.set(key, Date.now());
+            return { host: p.host, port: p.port, live, lastSeen: peerLastSeen.get(key) || null };
+        }));
+        return { count: results.filter(r => r.live).length, peers: results };
+    } catch (_) { return { count: 0, peers: [] }; }
 }
 
 function startLoops() {
@@ -110,8 +118,8 @@ function startLoops() {
             const added = await addon.syncWithPeers();
             pushToRenderer('sync:done', { added });
             if (added > 0) checkNewMessages();
-            const count = await getLivePeerCount();
-            pushToRenderer('peers:update', { count });
+            const { count, peers } = await getLivePeers();
+            pushToRenderer('peers:update', { count, peers });
         } catch (_) {
         } finally {
             syncInProgress = false;

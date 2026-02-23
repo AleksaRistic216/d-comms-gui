@@ -12,6 +12,7 @@ const state = {
     appReady:       false,
     syncing:        false,
     syncPort:       -1,
+    peers:          [],          // [{ host, port, live, lastSeen }]
 };
 
 // ── DOM refs ─────────────────────────────────────────────────────────────────
@@ -33,6 +34,7 @@ const el = {
     btnSend:        $('btnSend'),
     syncIndicator:  $('syncIndicator'),
     peerBadge:      $('peerBadge'),
+    peerTooltip:    $('peerTooltip'),
     // modals / buttons
     btnAddChat:       $('btnAddChat'),
     btnOpenDataDir:   $('btnOpenDataDir'),
@@ -229,10 +231,42 @@ function updateSyncIndicator() {
     el.syncIndicator.className = 'sync-indicator' + (state.syncing ? ' syncing' : ' connected');
 }
 
-function updatePeerBadge(count) {
+function relativeTime(ts) {
+    if (!ts) return 'never';
+    const diff = Math.floor((Date.now() - ts) / 1000);
+    if (diff < 5)    return 'just now';
+    if (diff < 60)   return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    return `${Math.floor(diff / 3600)}h ago`;
+}
+
+function updatePeerBadge(count, peers) {
     el.peerBadge.textContent = count === 1 ? '1 peer' : `${count} peers`;
     el.peerBadge.className   = 'peer-badge' + (count > 0 ? ' has-peers' : '');
+    if (peers) state.peers = peers;
 }
+
+function buildPeerTooltip() {
+    const peers = state.peers;
+    if (peers.length === 0) {
+        el.peerTooltip.innerHTML = '<div class="peer-tooltip-empty">No peers in registry</div>';
+        return;
+    }
+    el.peerTooltip.innerHTML = peers.map(p => `
+        <div class="peer-tooltip-row">
+            <span class="peer-tooltip-dot ${p.live ? 'live' : ''}"></span>
+            <span class="peer-tooltip-addr">${escHtml(p.host)}:${p.port}</span>
+            <span class="peer-tooltip-time">${relativeTime(p.lastSeen)}</span>
+        </div>`).join('');
+}
+
+el.peerBadge.addEventListener('mouseenter', () => {
+    buildPeerTooltip();
+    el.peerTooltip.classList.add('visible');
+});
+el.peerBadge.addEventListener('mouseleave', () => {
+    el.peerTooltip.classList.remove('visible');
+});
 
 function showChatView() {
     el.emptyState.style.display   = 'none';
@@ -588,7 +622,7 @@ window.dcomms.onMessagesUpdate(data => {
 });
 
 window.dcomms.onPeersUpdate(data => {
-    updatePeerBadge(data.count || 0);
+    updatePeerBadge(data.count || 0, data.peers || []);
 });
 
 window.dcomms.onSyncStart(() => {

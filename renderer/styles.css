@@ -116,6 +116,63 @@ body {
     color: var(--success);
 }
 
+.peer-badge-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.peer-tooltip {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 220px;
+    background: var(--bg-darkest);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: var(--border-radius);
+    padding: 8px 0;
+    box-shadow: 0 4px 16px rgba(0,0,0,.5);
+    z-index: 200;
+}
+.peer-tooltip.visible { display: block; }
+
+.peer-tooltip-empty {
+    padding: 6px 12px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.peer-tooltip-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
+    font-size: 12px;
+}
+.peer-tooltip-row:hover { background: var(--bg-hover); }
+
+.peer-tooltip-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--text-muted);
+}
+.peer-tooltip-dot.live { background: var(--success); }
+
+.peer-tooltip-addr {
+    flex: 1;
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+    font-size: 11px;
+}
+
+.peer-tooltip-time {
+    color: var(--text-muted);
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
 .sidebar-section-label {
     padding: 16px 16px 4px;
     font-size: 11px;
