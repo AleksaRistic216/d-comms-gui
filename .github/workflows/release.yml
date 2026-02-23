@@ -45,21 +45,32 @@ jobs:
             fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');
           "
 
-      # Windows: build the native addon with MSYS2 MinGW + Ninja so the
-      # resulting .node has no Visual C++ or MinGW runtime DLL dependencies
-      # (libgcc, libstdc++, libwinpthread are linked statically via CMakeLists).
+      # cmake-js auto-detects Visual Studio on Windows and explicitly passes
+      # -G "Visual Studio 17 2022", ignoring CMAKE_GENERATOR env. That triggers
+      # the library's MSVC branch which fetches pthreads4w — broken upstream.
+      # Fix: install Node deps without running postinstall, then build the
+      # native addon manually with Ninja + MinGW (pre-installed in MSYS2).
       - name: Add MinGW to PATH (Windows)
         if: runner.os == 'Windows'
         shell: bash
         run: echo "C:/msys64/mingw64/bin" >> $GITHUB_PATH
 
-      - name: Install dependencies
+      - name: Install Node dependencies
         shell: bash
-        run: npm install
+        run: npm install --ignore-scripts
+
+      - name: Build native addon (Linux / macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: npx cmake-js build
+
+      - name: Build native addon (Windows — MinGW + Ninja)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: npx cmake-js build --generator "Ninja"
         env:
-          CMAKE_GENERATOR: ${{ runner.os == 'Windows' && 'Ninja' || '' }}
-          CC:  ${{ runner.os == 'Windows' && 'gcc'   || '' }}
-          CXX: ${{ runner.os == 'Windows' && 'g++'   || '' }}
+          CC: gcc
+          CXX: g++
 
       - name: Package and publish
         shell: bash
