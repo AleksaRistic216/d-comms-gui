@@ -15,12 +15,16 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
+            label: Linux
             eb_args: --linux --x64
           - os: macos-latest
+            label: macOS (arm64)
             eb_args: --mac --arm64
           - os: windows-latest
+            label: Windows
             eb_args: --win --x64
 
+    name: ${{ matrix.label }}
     runs-on: ${{ matrix.os }}
 
     steps:

@@ -2,6 +2,7 @@
   "name": "d-comms-gui",
   "version": "1.0.0",
   "description": "Discord-like encrypted P2P messaging app using d-comms protocol",
+  "author": "AleksaRistic216",
   "main": "main.js",
   "scripts": {
     "build": "cmake-js build",
