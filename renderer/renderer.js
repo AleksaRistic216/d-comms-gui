@@ -66,10 +66,6 @@ const el = {
     btnInfoCopySecretId: $('btnInfoCopySecretId'),
     infoSyncPort:     $('infoSyncPort'),
     // add-peer modal
-    modalAddPeer:     $('modalAddPeer'),
-    inputPeerHost:    $('inputPeerHost'),
-    inputPeerPort:    $('inputPeerPort'),
-    btnAddPeer:       $('btnAddPeer'),
     // delete confirm
     modalDeleteConfirm:  $('modalDeleteConfirm'),
     deleteConfirmName:   $('deleteConfirmName'),
@@ -271,21 +267,6 @@ el.peerBadge.addEventListener('mouseleave', () => {
     el.peerTooltip.classList.remove('visible');
 });
 
-// Click the peer badge to open the Add Peer modal
-el.peerBadge.addEventListener('click', () => {
-    el.peerTooltip.classList.remove('visible');
-    el.inputPeerHost.value = '';
-    el.inputPeerPort.value = '';
-    showModal('modalAddPeer');
-});
-
-el.btnAddPeer.addEventListener('click', async () => {
-    const host = el.inputPeerHost.value.trim();
-    const port = parseInt(el.inputPeerPort.value.trim(), 10);
-    if (!host || isNaN(port) || port < 1 || port > 65535) return;
-    await window.dcomms.addPeer(host, port);
-    closeModal('modalAddPeer');
-});
 
 function showChatView() {
     el.emptyState.style.display   = 'none';

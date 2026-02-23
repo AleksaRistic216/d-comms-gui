@@ -20,7 +20,7 @@
         </div>
         <span class="app-name">D-Comms</span>
         <div class="peer-badge-wrap">
-            <span class="peer-badge" id="peerBadge" title="Click to add peer">0 peers</span>
+            <span class="peer-badge" id="peerBadge">0 peers</span>
         </div>
         <div class="sync-indicator" id="syncIndicator" title="Sync status"></div>
     </div>
@@ -225,23 +225,6 @@
     </div>
 </div>
 
-<!-- Add Peer Modal -->
-<div class="modal-backdrop" id="modalAddPeer" style="display:none">
-    <div class="modal modal-sm">
-        <div class="modal-header">
-            <h2>Add Peer</h2>
-            <button class="btn-icon modal-close" data-close="modalAddPeer">✕</button>
-        </div>
-        <label class="field-label">Host</label>
-        <input class="field-input" id="inputPeerHost" placeholder="192.168.1.x or hostname" />
-        <label class="field-label">Port</label>
-        <input class="field-input" id="inputPeerPort" type="number" placeholder="port number" />
-        <div class="modal-footer">
-            <button class="btn btn-ghost" data-close="modalAddPeer">Cancel</button>
-            <button class="btn btn-primary" id="btnAddPeer">Add</button>
-        </div>
-    </div>
-</div>
 
 <!-- Delete confirm modal -->
 <div class="modal-backdrop" id="modalDeleteConfirm" style="display:none">
